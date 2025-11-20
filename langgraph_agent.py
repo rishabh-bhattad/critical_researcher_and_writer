@@ -3,6 +3,7 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
+from langgraph.graph import StateGraph, START, END
 
 
 load_dotenv()
@@ -66,6 +67,23 @@ def writer_node(state: AgentState):
     return {'script': response.content}
 
 
+workflow = StateGraph(AgentState)
+workflow.add_node("researcher", research_node)
+workflow.add_node("critical_thinker", critical_thinker_node)
+workflow.add_node("writer", writer_node)
 
+workflow.add_edge(START, "researcher")
+workflow.add_edge("researcher", "critical_thinker")
+workflow.add_edge("critical_thinker", "writer")
+workflow.add_edge("writer", END)
+app = workflow.compile()
+
+if __name__ == "__main__":
+    topic = "history of tea"
+    app.invoke({"topic": topic})
+    final_state = app.invoke({"topic": topic})
     
-
+    print("\n" + "="*50)
+    print("FINAL SCRIPT")
+    print("="*50 + "\n")
+    print(final_state['script'])
