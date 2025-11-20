@@ -1,6 +1,7 @@
 from typing import TypedDict, Optional
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
 
@@ -28,4 +29,13 @@ def research_node(state: AgentState):
 def critical_thinker_node(state: AgentState):
     topic = state['topic']
     search_result = state['finding']
-    
+    template = ChatPromptTemplate.from_messages(
+        [
+            ("system", "You are an expert critical thinker. Review the provided research findings. Identify any conflicting information or redundancy, and provide a consolidated, accurate analysis."),
+            ("human", "Here is research on {topic}: {search_result}")
+        ]
+    )
+    chain = template | llm
+    response = chain.invoke({"input_variable": [topic, search_result]})
+    return {'analysis': response}
+
