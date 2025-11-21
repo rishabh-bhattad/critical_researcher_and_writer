@@ -22,6 +22,7 @@ class AgentState(TypedDict):
 
     
 def research_node(state: AgentState):
+    print("Researching.")
     search_tool = DuckDuckGoSearchRun()
     topic = state['topic']
     search_result = search_tool.invoke(topic)
@@ -29,6 +30,7 @@ def research_node(state: AgentState):
 
 
 def critical_thinker_node(state: AgentState):
+    print("Thinking.")
     topic = state['topic']
     search_result = state['finding']
     template = ChatPromptTemplate.from_messages(
@@ -51,7 +53,16 @@ def critical_thinker_node(state: AgentState):
     return {'analysis': response.content, "decision": decision}
 
 
+def router(state: AgentState):
+    feedback = state['decision']
+    if feedback == "retry":
+        return "researcher"
+    else:
+        return "writer"
+
+
 def writer_node(state: AgentState):
+    print("Writing.")
     topic = state['topic']
     analysis = state['analysis']
 
@@ -84,13 +95,12 @@ workflow.add_node("writer", writer_node)
 
 workflow.add_edge(START, "researcher")
 workflow.add_edge("researcher", "critical_thinker")
-workflow.add_edge("critical_thinker", "writer")
+workflow.add_conditional_edges(source="critical_thinker", path=router)
 workflow.add_edge("writer", END)
 app = workflow.compile()
 
 if __name__ == "__main__":
     topic = "history of tea"
-    app.invoke({"topic": topic})
     final_state = app.invoke({"topic": topic})
     
     print("\n" + "="*50)
