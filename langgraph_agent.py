@@ -17,6 +17,7 @@ class AgentState(TypedDict):
     topic: Optional[str]
     finding: Optional[str]
     analysis: Optional[str]
+    decision: Optional[str]
     script: Optional[str]
 
     
@@ -32,13 +33,22 @@ def critical_thinker_node(state: AgentState):
     search_result = state['finding']
     template = ChatPromptTemplate.from_messages(
         [
-            ("system", "You are an expert critical thinker. Review the provided research findings. Identify any conflicting information or redundancy, and provide a consolidated, accurate analysis."),
+            (
+                "system", "You are an expert critical thinker.\n"
+                "Review the provided research findings. If the research is good, output the word 'APPROVE' at the start.\n"
+                "If the research is bad/missing info, output the word 'RETRY' at the start.\n"
+                "Identify any conflicting information or redundancy, and provide a consolidated, accurate analysis."
+            ),
             ("human", "Here is research on {topic}: {finding}")
         ]
     )
     chain = template | llm
     response = chain.invoke({"topic": topic, "finding": search_result})
-    return {'analysis': response.content}
+    if "RETRY" in response.content.upper():
+        decision = "retry"
+    else:
+        decision = "approve"
+    return {'analysis': response.content, "decision": decision}
 
 
 def writer_node(state: AgentState):
