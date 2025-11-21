@@ -19,6 +19,7 @@ class AgentState(TypedDict):
     analysis: Optional[str]
     decision: Optional[str]
     script: Optional[str]
+    revision_number: Optional[int]
 
     
 def research_node(state: AgentState):
@@ -32,6 +33,7 @@ def research_node(state: AgentState):
 def critical_thinker_node(state: AgentState):
     print("Thinking.")
     topic = state['topic']
+    curr_rev = state.get('revision_number', 1) # so that it comes as one if it is none
     search_result = state['finding']
     template = ChatPromptTemplate.from_messages(
         [
@@ -50,12 +52,16 @@ def critical_thinker_node(state: AgentState):
         decision = "retry"
     else:
         decision = "approve"
-    return {'analysis': response.content, "decision": decision}
+    new_rev = curr_rev + 1
+    return {'analysis': response.content, "decision": decision, "revision_number": new_rev}
 
 
 def router(state: AgentState):
     feedback = state['decision']
-    if feedback == "retry":
+    revisions = state.get('revision_number', 1)
+    if revisions > 3:
+        return "writer"
+    elif feedback == "retry":
         return "researcher"
     else:
         return "writer"
@@ -100,7 +106,7 @@ workflow.add_edge("writer", END)
 app = workflow.compile()
 
 if __name__ == "__main__":
-    topic = "history of tea"
+    topic = "he biography of BlibberBlabber the Ghost"
     final_state = app.invoke({"topic": topic})
     
     print("\n" + "="*50)
